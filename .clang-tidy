@@ -1,0 +1,25 @@
+Checks: 'readability-identifier-naming, clang-diagnostic-*'
+FormatStyle: llvm
+HeaderFilterRegex: ''
+WarningsAsErrors: ''
+CheckOptions:
+  - { key: readability-identifier-naming.StructCase,            value: CamelCase  }
+  # - { key: readability-identifier-naming.MemberPrefix,          value: 'm_'       }
+  # - { key: readability-identifier-naming.PrivateMemberPrefix,   value: '_'        }
+  - { key: readability-identifier-naming.MemberCase,            value: lower_case }
+  - { key: readability-identifier-naming.MemberIgnoredRegexp,   value: "_.*" }
+  - { key: readability-identifier-naming.ConstantParameterCase, value: lower_case }
+  - { key: readability-identifier-naming.FunctionCase,          value: lower_case }
+  - { key: readability-identifier-naming.FunctionIgnoredRegexp, value: "_.*" }
+  - { key: readability-identifier-naming.ParameterCase,         value: lower_case }
+  - { key: readability-identifier-naming.VariableCase,          value: lower_case }
+  - { key: readability-identifier-naming.ConstantCase,          value: UPPER_CASE }
+  - { key: readability-identifier-naming.GlobalVariableCase,    value: lower_case }
+  - { key: readability-identifier-naming.GlobalVariablePrefix,  value: 'g_'       }
+  - { key: readability-identifier-naming.UnionCase,             value: CamelCase  } 
+  # - { key: readability-identifier-naming.UnionPrefix,           value: 'U'        }
+  # - { key: readability-identifier-naming.EnumPrefix,            value: 'E'        }
+  - { key: readability-identifier-naming.EnumCase,              value: CamelCase  }
+  - { key: readability-identifier-naming.TypedefCase,           value: CamelCase  } 
+  - { key: readability-identifier-naming.TypedefSuffix,         value: '_t'       }
+  # - { key: readability-identifier-naming.PointerParameterPrefix,value: 'p_'       }
