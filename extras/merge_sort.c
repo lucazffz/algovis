@@ -58,6 +58,7 @@ void merge_sort_help(int* arr, int left_idx, int right_idx) {
     merge_sort_help(arr, left_idx, mid);
     merge_sort_help(arr, mid + 1, right_idx);
 
+    // merge the two sorted arrays together on they way up the call stack
     merge(arr, left_idx, mid, right_idx);
 }
 
@@ -70,7 +71,7 @@ void merge_sort(int* arr, int len) {
 int main() {
 
     int arr[ARR_LEN];
-    for(int i = 0; i < ARR_LEN; i++) {
+    for (int i = 0; i < ARR_LEN; i++) {
         arr[i] = rand() % 100;
     }
 
