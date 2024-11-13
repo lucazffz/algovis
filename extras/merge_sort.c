@@ -79,7 +79,7 @@ int main() {
         printf("%d, ", arr[i]);
     }
 
-    merge_sort_help(arr, 0, ARR_LEN - 1);
+    merge_sort(arr, ARR_LEN);
     printf("\nSorted array: ");
     for (int i = 0; i < ARR_LEN; i++) {
         printf("%d, ", arr[i]);

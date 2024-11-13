@@ -1,0 +1,76 @@
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+void swap(int* a, int* b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+int partition(int* arr, int left_idx, int right_idx) {
+    int pivot_idx = left_idx;
+
+    int i = left_idx + 1; // first element after pivot
+    int j = right_idx;
+
+    // pivot is first element so no initial swap neccecary
+    while (true) {
+        // could swap if equals pivot but would be unneccecary work
+        while (arr[i] <= arr[pivot_idx] && i < right_idx) {
+            i++;
+        }
+
+        while (arr[j] >= arr[pivot_idx] && j > left_idx) {
+            j--;
+        }
+
+        // need check here because should not swap if i >= j which occurs
+        // on the last iteration
+        if (i < j) {
+            swap(&arr[i], &arr[j]);
+        } else {
+            // place pivot at right index
+            swap(&arr[left_idx], &arr[j]);
+            return j;
+        }
+    }
+}
+
+#define ARR_LEN 20
+void quick_sort_help(int* arr, int left_idx, int right_idx) {
+    if (left_idx >= right_idx) {
+        return;
+    }
+
+    int pivot = partition(arr, left_idx, right_idx);
+
+    // when we return if the call stask the array will already be sorted
+    // know that pivot is already at the correct index
+    quick_sort_help(arr, left_idx, pivot - 1);
+    quick_sort_help(arr, pivot + 1, right_idx);
+}
+
+void quick_sort(int* arr, int len) {
+    quick_sort_help(arr, 0, len - 1);
+}
+
+int main() {
+
+    int arr[ARR_LEN];
+    for (int i = 0; i < ARR_LEN; i++) {
+        arr[i] = rand() % 100;
+    }
+
+    printf("Original array: ");
+    for (int i = 0; i < ARR_LEN; i++) {
+        printf("%d, ", arr[i]);
+    }
+
+    quick_sort(arr, ARR_LEN);
+    printf("\nSorted array: ");
+    for (int i = 0; i < ARR_LEN; i++) {
+        printf("%d, ", arr[i]);
+    }
+    return 0;
+}
