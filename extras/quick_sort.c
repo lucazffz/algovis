@@ -58,7 +58,6 @@ void quick_sort(int* arr, int len) {
 #define ARR_LEN 20
 
 int main() {
-
     int arr[ARR_LEN];
     for (int i = 0; i < ARR_LEN; i++) {
         arr[i] = rand() % 100;
@@ -79,7 +78,7 @@ int main() {
         printf("%d, ", arr[i]);
     }
 
-    double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
     printf("\nSorting took %f seconds", cpu_time_used);
     return 0;
 }

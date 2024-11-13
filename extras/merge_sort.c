@@ -67,7 +67,7 @@ void merge_sort(int* arr, int len) {
     merge_sort_help(arr, 0, len - 1);
 }
 
-#define ARR_LEN 20 
+#define ARR_LEN 20
 
 int main() {
     int arr[ARR_LEN];
@@ -91,7 +91,7 @@ int main() {
         printf("%d, ", arr[i]);
     }
 
-    double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
     printf("\nSorting took %f seconds", cpu_time_used);
     return 0;
 }
