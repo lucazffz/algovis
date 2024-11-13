@@ -37,23 +37,24 @@ int partition(int* arr, int left_idx, int right_idx) {
     }
 }
 
-#define ARR_LEN 20
 void quick_sort_help(int* arr, int left_idx, int right_idx) {
     if (left_idx >= right_idx) {
         return;
     }
 
-    int pivot = partition(arr, left_idx, right_idx);
+    int pivot_idx = partition(arr, left_idx, right_idx);
 
     // when we return if the call stask the array will already be sorted
     // know that pivot is already at the correct index
-    quick_sort_help(arr, left_idx, pivot - 1);
-    quick_sort_help(arr, pivot + 1, right_idx);
+    quick_sort_help(arr, left_idx, pivot_idx - 1);
+    quick_sort_help(arr, pivot_idx + 1, right_idx);
 }
 
 void quick_sort(int* arr, int len) {
     quick_sort_help(arr, 0, len - 1);
 }
+
+#define ARR_LEN 20
 
 int main() {
 
