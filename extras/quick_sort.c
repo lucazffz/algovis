@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 void swap(int* a, int* b) {
     int temp = *a;
@@ -67,11 +68,18 @@ int main() {
     for (int i = 0; i < ARR_LEN; i++) {
         printf("%d, ", arr[i]);
     }
+    clock_t start, end;
 
+    start = clock();
     quick_sort(arr, ARR_LEN);
+    end = clock();
+
     printf("\nSorted array: ");
     for (int i = 0; i < ARR_LEN; i++) {
         printf("%d, ", arr[i]);
     }
+
+    double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("\nSorting took %f seconds", cpu_time_used);
     return 0;
 }

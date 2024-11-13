@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 void merge(int* arr, int left_idx, int mid, int right_idx) {
     int a_len = mid - left_idx + 1;
@@ -66,10 +67,9 @@ void merge_sort(int* arr, int len) {
     merge_sort_help(arr, 0, len - 1);
 }
 
-#define ARR_LEN 20
+#define ARR_LEN 20 
 
 int main() {
-
     int arr[ARR_LEN];
     for (int i = 0; i < ARR_LEN; i++) {
         arr[i] = rand() % 100;
@@ -80,10 +80,18 @@ int main() {
         printf("%d, ", arr[i]);
     }
 
+    clock_t start, end;
+
+    start = clock();
     merge_sort(arr, ARR_LEN);
+    end = clock();
+
     printf("\nSorted array: ");
     for (int i = 0; i < ARR_LEN; i++) {
         printf("%d, ", arr[i]);
     }
+
+    double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("\nSorting took %f seconds", cpu_time_used);
     return 0;
 }
