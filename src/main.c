@@ -7,7 +7,7 @@
 #define COLUMN_MAX_HEIGHT 400
 #define COLUMN_MIN_HEIGHT 20
 
-#define NUM_COLUMNS SCREEN_WIDTH / 4 // screen with divisable by 4
+#define NUM_COLUMNS SCREEN_WIDTH / 4 // screen with is divisable by 4
 
 struct SelectionSortState {
     int* arr;
@@ -27,7 +27,7 @@ struct InsertSortState {
     bool done;
 };
 
-enum Algorithm {
+enum AlgorithmType {
     SELECTION_SORT,
     INSERT_SORT,
     MERGE_SORT,
@@ -55,6 +55,16 @@ struct ColumnDrawData {
     // at colored_column_indices[i]
     int* colored_columns_indices;
     Color_t* colors;
+};
+
+struct App {
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    SDL_Event event;
+    enum AlgorithmType algorithm_type;
+    struct SelectionSortState selection_sort_state;
+    struct InsertSortState insert_sort_state;
+    int rnd_values[NUM_COLUMNS];
 };
 
 const Color_t SECONDARY = {255, 0, 0, 255};
@@ -148,79 +158,83 @@ void column_draw_data_init(struct ColumnDrawData* data,
     data->colors = NULL;
 }
 
-int main() {
-    // --- Initialize SDL2 ---
-    printf("Initializing SDL2...\n");
-    if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-        fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
-        return EXIT_FAILURE;
-    }
-
-    SDL_Window* window;
-    SDL_Renderer* renderer;
-    SDL_Event window_event;
-
-    int8_t success = SDL_CreateWindowAndRenderer(SCREEN_WIDTH,
-                                                 SCREEN_HEIGHT,
-                                                 0,
-                                                 &window,
-                                                 &renderer);
-    if (success == -1) {
-        fprintf(stderr, "could not create window: %s\n", SDL_GetError());
-        return EXIT_FAILURE;
-    }
-
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderPresent(renderer);
-
-    // --- Initialize ---
-    int rnd_values[NUM_COLUMNS];
+// reset app to initial state
+void reset(struct App* app) {
     for (int i = 0; i < NUM_COLUMNS; i++) {
-        rnd_values[i] =
+        app->rnd_values[i] =
             rand() % (COLUMN_MAX_HEIGHT - COLUMN_MIN_HEIGHT + 2) +
             COLUMN_MIN_HEIGHT;
     }
 
-    // NOTE: the sorting algorithms will mutate rnd_values
-    struct SelectionSortState selection_sort_state;
-    selection_sort_init(&selection_sort_state, rnd_values, NUM_COLUMNS);
+    selection_sort_init(&app->selection_sort_state, app->rnd_values, NUM_COLUMNS);
+    insert_sort_init(&app->insert_sort_state, app->rnd_values, NUM_COLUMNS);
+}
 
-    struct InsertSortState insert_sort_state;
-    insert_sort_init(&insert_sort_state, rnd_values, NUM_COLUMNS);
+// initializes SDL2 and create a window among other things
+bool init(struct App* app) {
+    printf("Initializing SDL2...\n");
+    if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+        fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
+        return false;
+    }
+
+    if (SDL_CreateWindowAndRenderer(SCREEN_WIDTH,
+                                    SCREEN_HEIGHT,
+                                    0,
+                                    &app->window,
+                                    &app->renderer) < 0) {
+        fprintf(stderr, "could not create window: %s\n", SDL_GetError());
+        return false;
+    }
+
+    SDL_SetRenderDrawColor(app->renderer, 255, 255, 255, 255);
+    SDL_RenderClear(app->renderer);
+    SDL_RenderPresent(app->renderer);
+
+    app->algorithm_type = INSERT_SORT;
+
+    reset(app);
+
+    return true;
+}
+
+int main() {
+    struct App app;
+
+    if (!init(&app)) {
+        return EXIT_FAILURE;
+    }
 
     struct ColumnDrawData draw_info;
-    column_draw_data_init(&draw_info, rnd_values, NUM_COLUMNS);
-
-    enum Algorithm algorithm = INSERT_SORT;
+    column_draw_data_init(&draw_info, app.rnd_values, NUM_COLUMNS);
 
     // --- Main loop ---
     while (true) {
-        switch (algorithm) {
+        switch (app.algorithm_type) {
         case SELECTION_SORT:
-            if (!selection_sort_state.done) {
-                selection_sort_step(&selection_sort_state);
+            if (!app.selection_sort_state.done) {
+                selection_sort_step(&app.selection_sort_state);
             }
 
             {
                 Color_t colors[] = {PRIMARY, SECONDARY, TERTIARY};
-                int ind[] = {selection_sort_state.iter_idx,
-                             selection_sort_state.inner_idx,
-                             selection_sort_state.min_idx};
+                int ind[] = {app.selection_sort_state.iter_idx,
+                             app.selection_sort_state.inner_idx,
+                             app.selection_sort_state.min_idx};
                 draw_info.num_colored_columns = 3;
                 draw_info.colored_columns_indices = ind;
                 draw_info.colors = colors;
                 break;
             }
         case INSERT_SORT:
-            if (!insert_sort_state.done) {
-                insert_sort_step(&insert_sort_state);
+            if (!app.insert_sort_state.done) {
+                insert_sort_step(&app.insert_sort_state);
             }
 
             {
                 Color_t colors[] = {PRIMARY, SECONDARY};
-                int ind[] = {insert_sort_state.iter_idx + 1,
-                             insert_sort_state.insert_idx};
+                int ind[] = {app.insert_sort_state.iter_idx + 1,
+                             app.insert_sort_state.insert_idx};
                 draw_info.num_colored_columns = 2;
                 draw_info.colored_columns_indices = ind;
                 draw_info.colors = colors;
@@ -230,12 +244,12 @@ int main() {
             break;
         }
 
-        SDL_RenderClear(renderer);
-        draw_columns(renderer, draw_info);
-        SDL_RenderPresent(renderer);
+        SDL_RenderClear(app.renderer);
+        draw_columns(app.renderer, draw_info);
+        SDL_RenderPresent(app.renderer);
 
-        if (SDL_PollEvent(&window_event)) {
-            if (window_event.type == SDL_QUIT) {
+        if (SDL_PollEvent(&app.event)) {
+            if (app.event.type == SDL_QUIT) {
                 break;
             }
         }
@@ -243,8 +257,8 @@ int main() {
         SDL_Delay(10);
     }
 
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+    SDL_DestroyRenderer(app.renderer);
+    SDL_DestroyWindow(app.window);
     SDL_Quit();
 
     return EXIT_SUCCESS;
