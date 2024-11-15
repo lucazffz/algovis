@@ -65,11 +65,18 @@ void merge_sort_recursive(int* arr, int left_idx, int right_idx) {
 
 int min(int x, int y) { return (x < y) ? x : y; }
 
-void merge_sort_iterative(int* arr, int len) {
-    // merge subarrays of size 1, then 2, then 4, etc. from bottom up
+void merge_sort_iterative_v1(int* arr, int len) {
+    // pairwise merge entire array split into subarrays of size 1, then 2,
+    // then 4, etc. from bottom up in a level like fasion
     // until we reach the full array
+
     // each iteration is a pass through the array, merging subarrays
     // will preform log2(len) iterations
+
+    // NOTE: this implementation will merge on a different order
+    // from a traditional recursive merge sort implementation and is therefore
+    // not appropriate for visualizing, but the result will be the same
+
     for (int curr_size = 1; curr_size < len; curr_size = 2 * curr_size) {
         // merge all subarrays pair-wise from left to right
         // e.g. subarray 1 and 2, then 3 and 4, etc. each with size curr_size
@@ -82,69 +89,37 @@ void merge_sort_iterative(int* arr, int len) {
     }
 }
 
-struct MergeSortState {
-    int* arr;
-    int len;
-    int curr_size;
-    int left_start;
-    bool merge_done;
-    bool first_merge_iter;
-    bool done;
-    int* a;
-    int* b;
-    int a_idx;
-    int b_idx;
-    int i;
-};
-
-void merge_step(struct MergeSortState* state) {
-    if (state->a_idx >= state->len) {
-        state->arr[state->i] = state->b[state->b_idx];
-        state->b_idx++;
-        state->i++;
-        return;
+int build_merge_stack(int* stack, int stack_ptr, int left_idx, int right_idx) {
+    if (left_idx >= right_idx) {
+        return stack_ptr;
     }
 
-    if (state->b_idx >= state->len) {
-        state->arr[state->i] = state->a[state->a_idx];
-        state->a_idx++;
-        state->i++;
-        return;
-    }
+    stack[stack_ptr++] = left_idx;
+    stack[stack_ptr++] = right_idx;
 
-    if (state->a[state->a_idx] <= state->b[state->b_idx]) {
-        state->arr[state->i] = state->a[state->a_idx];
-        state->a_idx++;
-    } else {
-        state->arr[state->i] = state->b[state->b_idx];
-        state->b_idx++;
-    }
-    state->i++;
+    int mid = left_idx + (right_idx - left_idx) / 2;
+    stack_ptr = build_merge_stack(stack, stack_ptr, left_idx, mid);
+    return build_merge_stack(stack, stack_ptr, mid + 1, right_idx);
 }
 
-void merge_sort_init(struct MergeSortState* state, int* arr, int len) {
-    state->arr = arr;
-    state->len = len;
-    state->curr_size = 1;
-    state->left_start = 0;
-    state->done = false;
-    state->merge_done = false;
-    state->first_merge_iter = true;
-}
+void merge_sort_iterative_v2(int* arr, int len) {
+    // we are only interested of visualizing the mergeing
+    // and since that happens on the way up the call stack
+    // we can recursively create a stack of all indicies to merge
+    // between beforehand and then iterate over the stack and merge
+    // each index pair
 
-void merge_sort_step(struct MergeSortState* state) {
-    // analagous to merge_sort_iterative, reference that version
-    // for better understanding of the algorithm, this is a cluterfuck
-    if (state->left_start < state->len - 1) {
-        int mid = min(state->left_start + state->curr_size - 1, state->len - 1);
-        int right_end = min(state->left_start + 2 * state->curr_size - 1, state->len - 1);
-        merge(state->arr, state->left_start, mid, right_end);
-        state->left_start += 2 * state->curr_size;
-    } else if (state->curr_size <= state->len - 1) {
-        state->curr_size *= 2;
-        state->left_start = 0;
-    } else {
-        state->done = true;
+    // some arbitary size for the stack, enoough for arrays of up to size 2^50
+    // since we ony store log2(len)*2 elements on the stack
+    int stack[100] = {0};
+    int stack_ptr = build_merge_stack(stack, 0, 0, len - 1);
+
+    // iterate over the stack and merge each pair of subarrays
+    while (stack_ptr > 1) {
+        int right_idx = stack[--stack_ptr];
+        int left_idx = stack[--stack_ptr];
+        int mid = left_idx + (right_idx - left_idx) / 2;
+        merge(arr, left_idx, mid, right_idx);
     }
 }
 
@@ -162,15 +137,8 @@ int main() {
     }
 
     clock_t start, end;
-
     start = clock();
-    // merge_sort(arr, ARR_LEN);
-    struct MergeSortState state;
-    merge_sort_init(&state, arr, ARR_LEN);
-    while (!state.done) {
-        merge_sort_step(&state);
-    }
-
+    merge_sort_recursive(arr, 0, ARR_LEN - 1);
     end = clock();
 
     printf("\nSorted array: ");
