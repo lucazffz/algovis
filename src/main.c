@@ -53,10 +53,10 @@ enum AlgorithmType {
 };
 
 typedef struct Color {
-    int r;
-    int g;
-    int b;
-    int a;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
 } Color_t;
 
 struct ColumnDrawData {
@@ -86,10 +86,11 @@ struct App {
     int rnd_values[NUM_COLUMNS];
 };
 
-const Color_t SECONDARY = {255, 0, 0, 255};
-const Color_t PRIMARY = {0, 255, 0, 255};
-const Color_t TERTIARY = {0, 0, 255, 255};
-const Color_t WHITE = {255, 255, 255, 255};
+const Color_t PRIMARY = {4, 191, 157, 255};
+const Color_t SECONDARY = {210, 64, 31, 255};
+const Color_t TERTIARY = {200, 180, 60, 255};
+const Color_t LIGHT = {220, 220, 220, 255};
+const Color_t DARK = {6, 10, 18, 255};
 
 // ================== Selection sort ==================
 void selection_sort_init(struct SelectionSortState* state, int arr[], int n) {
@@ -280,7 +281,7 @@ void draw_columns(SDL_Renderer* const renderer, struct ColumnDrawData data) {
     for (int i = 0; i < data.num_columns; i++) {
         SDL_Rect column =
             {data.x + i * data.w, data.y, data.w, -data.columns[i]};
-        Color_t color = WHITE;
+        Color_t color = LIGHT;
         for (int j = 0; j < data.num_colored_columns; j++) {
             if (i == data.colored_columns_indices[j]) {
                 color = data.colors[j];
@@ -289,7 +290,7 @@ void draw_columns(SDL_Renderer* const renderer, struct ColumnDrawData data) {
         }
         SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
         SDL_RenderFillRect(renderer, &column);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_SetRenderDrawColor(renderer, DARK.r, DARK.g, DARK.b, DARK.a);
     }
 }
 
