@@ -240,6 +240,7 @@ int main() {
                     app.running = !app.running;
                     break;
                 case SDLK_s:
+                    app.running = false;
                     should_step = true;
                     break;
                 default:
