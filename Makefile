@@ -1,6 +1,6 @@
 build: clean
 	mkdir -p build
-	gcc src/main.c -lSDL2 -o build/main
+	gcc src/main.c src/algorithms.c -lSDL2 -o build/main
 .PHONY: run
 
 run: build
