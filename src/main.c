@@ -33,15 +33,15 @@ struct MergeSortState {
     int len;
     int* stack;
     int stack_ptr;
-    int left_idx;
-    int right_idx;
+    int merge_left_idx;
+    int merge_right_idx;
+    int* subarr_left;
+    int* subarr_right;
+    int subarr_left_idx;
+    int subarr_right_idx;
+    int merge_iter;
     bool done;
     bool merge_done;
-    int* a;
-    int* b;
-    int a_idx;
-    int b_idx;
-    int i;
 };
 
 enum AlgorithmType {
@@ -90,7 +90,6 @@ const Color_t SECONDARY = {255, 0, 0, 255};
 const Color_t PRIMARY = {0, 255, 0, 255};
 const Color_t TERTIARY = {0, 0, 255, 255};
 const Color_t WHITE = {255, 255, 255, 255};
-
 
 // ================== Selection sort ==================
 void selection_sort_init(struct SelectionSortState* state, int arr[], int n) {
@@ -160,38 +159,38 @@ int build_merge_stack(int* stack, int stack_ptr, int left_idx, int right_idx) {
     stack[stack_ptr++] = right_idx;
 
     int mid = left_idx + (right_idx - left_idx) / 2;
-    stack_ptr = build_merge_stack(stack, stack_ptr, left_idx, mid);
-    return build_merge_stack(stack, stack_ptr, mid + 1, right_idx);
+    stack_ptr = build_merge_stack(stack, stack_ptr, mid + 1, right_idx);
+    return build_merge_stack(stack, stack_ptr, left_idx, mid);
 }
 
 void merge_init(struct MergeSortState* state, bool should_realloc) {
     // reset merge step state to initial values
     state->merge_done = false;
-    state->a_idx = 0;
-    state->b_idx = 0;
-    state->i = 0;
+    state->subarr_left_idx = 0;
+    state->subarr_right_idx = 0;
+    state->merge_iter = 0;
 
-    // reallocate a and b to fit the new subarray sizes and copy elements
-    // from arr
-    int mid = state->left_idx + (state->right_idx - state->left_idx) / 2;
-    int a_len = mid - state->left_idx + 1;
-    int b_len = state->right_idx - mid;
+    // reallocate subarr_left and subarr_right to fit the new
+    // subarray sizes and copy elements from arr
+    int mid = state->merge_left_idx + (state->merge_right_idx - state->merge_left_idx) / 2;
+    int left_len = mid - state->merge_left_idx + 1;
+    int right_len = state->merge_right_idx - mid;
     if (should_realloc) {
-        state->a = realloc(state->a, a_len * sizeof(int));
-        state->b = realloc(state->b, b_len * sizeof(int));
+        state->subarr_left = realloc(state->subarr_left, left_len * sizeof(int));
+        state->subarr_right = realloc(state->subarr_right, right_len * sizeof(int));
     } else {
-        state->a = malloc(a_len * sizeof(int));
-        state->b = malloc(b_len * sizeof(int));
+        state->subarr_left = malloc(left_len * sizeof(int));
+        state->subarr_right = malloc(right_len * sizeof(int));
     }
 
-    // copy elements from arr to a within interval [left, mid]
-    for (int i = 0; i < a_len; i++) {
-        state->a[i] = state->arr[state->left_idx + i];
+    // copy elements from arr to left within interval [left_idx, mid]
+    for (int i = 0; i < left_len; i++) {
+        state->subarr_left[i] = state->arr[state->merge_left_idx + i];
     }
 
-    // copy elements from arr to b within interval (mid, right]
-    for (int i = 0; i < b_len; i++) {
-        state->b[i] = state->arr[mid + i + 1];
+    // copy elements from arr to right within interval (mid, right_idx]
+    for (int i = 0; i < right_len; i++) {
+        state->subarr_right[i] = state->arr[mid + i + 1];
     }
 }
 
@@ -201,52 +200,58 @@ void merge_sort_init(struct MergeSortState* state, int* arr, int len) {
     state->done = false;
     state->stack = malloc(1000 * sizeof(int)); // somewhat arbitrary size
     state->stack_ptr = build_merge_stack(state->stack, 0, 0, len - 1);
-    state->left_idx = 0;
-    state->right_idx = len - 1;
+    state->merge_left_idx = 0;
+    state->merge_right_idx = len - 1;
 
     merge_init(state, false);
 }
 
 void merge_step(struct MergeSortState* state) {
-    int left_idx = state->left_idx;
-    int right_idx = state->right_idx;
-    int* a = state->a;
-    int* b = state->b;
+    // just a couple of variables to make the code more readable
+    int lo = state->merge_left_idx;
+    int hi = state->merge_right_idx;
+    int mid = lo + (hi - lo) / 2;
 
-    int mid = left_idx + (right_idx - left_idx) / 2;
-    int a_len = mid - left_idx + 1;
-    int b_len = right_idx - mid;
+    int* a = state->subarr_left;
+    int* b = state->subarr_right;
+    int a_len = mid - lo + 1;
+    int b_len = hi - mid;
+    int a_idx = state->subarr_left_idx;
+    int b_idx = state->subarr_right_idx;
 
-    // loop until we have traversed all elements in a and b
-    if (state->i < a_len + b_len) {
-        // if we have traversed all elements in a,
-        // then add the remaining elements from b
-        if (state->a_idx >= a_len) {
-            state->arr[left_idx + state->i] = b[state->b_idx];
-            state->b_idx++;
-            state->i++;
+    // NOTE: a is subarr_left, b is subarr_right
+    // loop until we have traversed all elements in
+    // subarr_left and subarr_right
+    if (state->merge_iter < a_len + b_len) {
+        // if we have traversed all elements in subarr_left,
+        // then add the remaining elements from subarr_right
+        if (a_idx >= a_len) {
+            state->arr[lo + state->merge_iter] = b[b_idx];
+            state->subarr_right_idx++;
+            state->merge_iter++;
             return;
         }
 
-        // if we have traversed all elements in b,
-        // then add the remaining elements from a
-        if (state->b_idx >= b_len) {
-            state->arr[left_idx + state->i] = a[state->a_idx];
-            state->a_idx++;
-            state->i++;
+        // if we have traversed all elements in subarr_right,
+        // then add the remaining elements from subarr_left
+        if (b_idx >= b_len) {
+            state->arr[lo + state->merge_iter] = a[a_idx];
+            state->subarr_left_idx++;
+            state->merge_iter++;
             return;
         }
 
-        // if element in a is less than or equal to element in b,
-        // then add element in a to arr and move to next element in a
-        if (a[state->a_idx] <= b[state->b_idx]) {
-            state->arr[left_idx + state->i] = a[state->a_idx];
-            state->a_idx++;
+        // if element in subarr_left is less than or equal to element
+        // in subarr_right, then add element in subarr_left to arr and
+        // move to next element in subarr_left
+        if (a[a_idx] <= b[b_idx]) {
+            state->arr[lo + state->merge_iter] = a[a_idx];
+            state->subarr_left_idx++;
         } else {
-            state->arr[left_idx + state->i] = b[state->b_idx];
-            state->b_idx++;
+            state->arr[lo + state->merge_iter] = b[b_idx];
+            state->subarr_right_idx++;
         }
-        state->i++;
+        state->merge_iter++;
         return;
     } else {
         state->merge_done = true;
@@ -254,14 +259,16 @@ void merge_step(struct MergeSortState* state) {
 }
 
 void merge_sort_step(struct MergeSortState* state) {
-    // analagous to merge_sort_iterative_v2, reference that version
-    // for better understanding of the algorithm, this is a cluterfuck
+    // analagous to merge_sort_iterative_v2 in the extras directory,
+    // reference that version for better understanding of the algorithm,
+    // this is a cluterfuck
     if (!state->merge_done) {
         merge_step(state);
     } else if (state->stack_ptr > 1) {
         // pop the next pair of subarrays to merge from the stack
-        state->right_idx = state->stack[--state->stack_ptr];
-        state->left_idx = state->stack[--state->stack_ptr];
+        state->merge_right_idx = state->stack[--state->stack_ptr];
+        state->merge_left_idx = state->stack[--state->stack_ptr];
+        // reset merge step state to initial values
         merge_init(state, true);
     } else {
         state->done = true;
@@ -388,15 +395,15 @@ int main() {
             }
 
             {
-                Color_t colors[] = {PRIMARY, SECONDARY, TERTIARY};
-                int left_idx = app.merge_sort_state.left_idx;
-                int right_idx = app.merge_sort_state.right_idx;
+                Color_t colors[] = {SECONDARY, SECONDARY, TERTIARY, PRIMARY, PRIMARY};
+                int left_idx = app.merge_sort_state.merge_left_idx;
+                int right_idx = app.merge_sort_state.merge_right_idx;
                 int mid = left_idx + (right_idx - left_idx) / 2;
-                int a_ind = left_idx + app.merge_sort_state.a_idx;
-                int b_ind = mid + app.merge_sort_state.b_idx + 1;
-                int i = left_idx + app.merge_sort_state.i;
-                int ind[] = {a_ind, b_ind, i};
-                draw_info.num_colored_columns = 3;
+                int a_ind = left_idx + app.merge_sort_state.subarr_left_idx;
+                int b_ind = mid + app.merge_sort_state.subarr_right_idx + 1;
+                int i = left_idx + app.merge_sort_state.merge_iter;
+                int ind[] = {a_ind, b_ind, i, left_idx, right_idx};
+                draw_info.num_colored_columns = 5;
                 draw_info.colored_columns_indices = ind;
                 draw_info.colors = colors;
                 break;
