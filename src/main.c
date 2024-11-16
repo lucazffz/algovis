@@ -1,5 +1,5 @@
+#include "algorithms.h"
 #include <SDL2/SDL.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -8,41 +8,17 @@
 #define COLUMN_MAX_HEIGHT 400
 #define COLUMN_MIN_HEIGHT 20
 
+#define DELAY_MS 10
+
 #define NUM_COLUMNS SCREEN_WIDTH / 4 // screen with is divisable by 4
 
-struct SelectionSortState {
-    int* arr;
-    int len;
-    int iter_idx;  // index of the outer loop
-    int inner_idx; // index of the inner loop
-    int min_idx;   // index of the minimum element found after index iter_idx
-    bool done;
-};
-
-struct InsertSortState {
-    int* arr;
-    int len;
-    int iter_idx;   // index of the outer loop
-    int insert_idx; // index of the inner loop
-    int value;      // value to be inserted
-    bool done;
-};
-
-struct MergeSortState {
-    int* arr;
-    int len;
-    int* stack;
-    int stack_ptr;
-    int merge_left_idx;
-    int merge_right_idx;
-    int* subarr_left;
-    int* subarr_right;
-    int subarr_left_idx;
-    int subarr_right_idx;
-    int merge_iter;
-    bool done;
-    bool merge_done;
-};
+// Keyboard controls
+// -- R:     reset
+// -- SPACE: start/stop
+// -- S:     step
+// -- 1:     selection sort
+// -- 2:     insert sort
+// -- 3:     merge sort
 
 enum AlgorithmType {
     SELECTION_SORT,
@@ -82,8 +58,10 @@ struct App {
     struct SelectionSortState selection_sort_state;
     struct InsertSortState insert_sort_state;
     struct MergeSortState merge_sort_state;
+    struct ColumnDrawData draw_info;
 
     int rnd_values[NUM_COLUMNS];
+    bool running;
 };
 
 const Color_t PRIMARY = {4, 191, 157, 255};
@@ -92,191 +70,6 @@ const Color_t TERTIARY = {200, 180, 60, 255};
 const Color_t LIGHT = {220, 220, 220, 255};
 const Color_t DARK = {6, 10, 18, 255};
 
-// ================== Selection sort ==================
-void selection_sort_init(struct SelectionSortState* state, int arr[], int n) {
-    state->arr = arr;
-    state->len = n;
-    state->iter_idx = 0;
-    state->inner_idx = 0;
-    state->min_idx = 0;
-    state->done = false;
-}
-
-void selection_sort_step(struct SelectionSortState* s) {
-    if (s->iter_idx < s->len - 1) {
-        if (s->inner_idx < s->len) {
-            if (s->arr[s->inner_idx] < s->arr[s->min_idx]) {
-                s->min_idx = s->inner_idx;
-            }
-            s->inner_idx++;
-        } else {
-            int temp = s->arr[s->iter_idx];
-            s->arr[s->iter_idx] = s->arr[s->min_idx];
-            s->arr[s->min_idx] = temp;
-            s->iter_idx++;
-            s->inner_idx = s->iter_idx + 1;
-            s->min_idx = s->iter_idx;
-        }
-    } else {
-        s->done = true;
-    }
-}
-
-// ================== Insertion sort ==================
-void insert_sort_init(struct InsertSortState* state, int* arr, int n) {
-    // NOTE: order of initialization matters
-    state->arr = arr;
-    state->iter_idx = 0;
-    state->insert_idx = state->iter_idx - 1;
-    state->len = n;
-    state->value = state->arr[state->iter_idx];
-    state->done = false;
-}
-
-void insert_sort_step(struct InsertSortState* s) {
-    if (s->iter_idx < s->len) {
-        if (s->insert_idx >= 0 && s->arr[s->insert_idx] > s->value) {
-            s->arr[s->insert_idx + 1] = s->arr[s->insert_idx];
-            s->insert_idx--;
-        } else {
-            s->arr[s->insert_idx + 1] = s->value;
-            s->iter_idx++;
-            s->value = s->arr[s->iter_idx];
-            s->insert_idx = s->iter_idx - 1;
-        }
-
-    } else {
-        s->done = true;
-    }
-}
-
-// ================== Merge sort ==================
-int build_merge_stack(int* stack, int stack_ptr, int left_idx, int right_idx) {
-    if (left_idx >= right_idx) {
-        return stack_ptr;
-    }
-
-    stack[stack_ptr++] = left_idx;
-    stack[stack_ptr++] = right_idx;
-
-    int mid = left_idx + (right_idx - left_idx) / 2;
-    stack_ptr = build_merge_stack(stack, stack_ptr, mid + 1, right_idx);
-    return build_merge_stack(stack, stack_ptr, left_idx, mid);
-}
-
-void merge_init(struct MergeSortState* state, bool should_realloc) {
-    // reset merge step state to initial values
-    state->merge_done = false;
-    state->subarr_left_idx = 0;
-    state->subarr_right_idx = 0;
-    state->merge_iter = 0;
-
-    // reallocate subarr_left and subarr_right to fit the new
-    // subarray sizes and copy elements from arr
-    int mid = state->merge_left_idx + (state->merge_right_idx - state->merge_left_idx) / 2;
-    int left_len = mid - state->merge_left_idx + 1;
-    int right_len = state->merge_right_idx - mid;
-    if (should_realloc) {
-        state->subarr_left = realloc(state->subarr_left, left_len * sizeof(int));
-        state->subarr_right = realloc(state->subarr_right, right_len * sizeof(int));
-    } else {
-        state->subarr_left = malloc(left_len * sizeof(int));
-        state->subarr_right = malloc(right_len * sizeof(int));
-    }
-
-    // copy elements from arr to left within interval [left_idx, mid]
-    for (int i = 0; i < left_len; i++) {
-        state->subarr_left[i] = state->arr[state->merge_left_idx + i];
-    }
-
-    // copy elements from arr to right within interval (mid, right_idx]
-    for (int i = 0; i < right_len; i++) {
-        state->subarr_right[i] = state->arr[mid + i + 1];
-    }
-}
-
-void merge_sort_init(struct MergeSortState* state, int* arr, int len) {
-    state->arr = arr;
-    state->len = len;
-    state->done = false;
-    state->stack = malloc(1000 * sizeof(int)); // somewhat arbitrary size
-    state->stack_ptr = build_merge_stack(state->stack, 0, 0, len - 1);
-    state->merge_left_idx = 0;
-    state->merge_right_idx = len - 1;
-
-    merge_init(state, false);
-}
-
-void merge_step(struct MergeSortState* state) {
-    // just a couple of variables to make the code more readable
-    int lo = state->merge_left_idx;
-    int hi = state->merge_right_idx;
-    int mid = lo + (hi - lo) / 2;
-
-    int* a = state->subarr_left;
-    int* b = state->subarr_right;
-    int a_len = mid - lo + 1;
-    int b_len = hi - mid;
-    int a_idx = state->subarr_left_idx;
-    int b_idx = state->subarr_right_idx;
-
-    // NOTE: a is subarr_left, b is subarr_right
-    // loop until we have traversed all elements in
-    // subarr_left and subarr_right
-    if (state->merge_iter < a_len + b_len) {
-        // if we have traversed all elements in subarr_left,
-        // then add the remaining elements from subarr_right
-        if (a_idx >= a_len) {
-            state->arr[lo + state->merge_iter] = b[b_idx];
-            state->subarr_right_idx++;
-            state->merge_iter++;
-            return;
-        }
-
-        // if we have traversed all elements in subarr_right,
-        // then add the remaining elements from subarr_left
-        if (b_idx >= b_len) {
-            state->arr[lo + state->merge_iter] = a[a_idx];
-            state->subarr_left_idx++;
-            state->merge_iter++;
-            return;
-        }
-
-        // if element in subarr_left is less than or equal to element
-        // in subarr_right, then add element in subarr_left to arr and
-        // move to next element in subarr_left
-        if (a[a_idx] <= b[b_idx]) {
-            state->arr[lo + state->merge_iter] = a[a_idx];
-            state->subarr_left_idx++;
-        } else {
-            state->arr[lo + state->merge_iter] = b[b_idx];
-            state->subarr_right_idx++;
-        }
-        state->merge_iter++;
-        return;
-    } else {
-        state->merge_done = true;
-    }
-}
-
-void merge_sort_step(struct MergeSortState* state) {
-    // analagous to merge_sort_iterative_v2 in the extras directory,
-    // reference that version for better understanding of the algorithm,
-    // this is a cluterfuck
-    if (!state->merge_done) {
-        merge_step(state);
-    } else if (state->stack_ptr > 1) {
-        // pop the next pair of subarrays to merge from the stack
-        state->merge_right_idx = state->stack[--state->stack_ptr];
-        state->merge_left_idx = state->stack[--state->stack_ptr];
-        // reset merge step state to initial values
-        merge_init(state, true);
-    } else {
-        state->done = true;
-    }
-}
-
-// ================== Main ==================
 void draw_columns(SDL_Renderer* const renderer, struct ColumnDrawData data) {
     for (int i = 0; i < data.num_columns; i++) {
         SDL_Rect column =
@@ -315,6 +108,8 @@ void reset(struct App* app) {
             COLUMN_MIN_HEIGHT;
     }
 
+    app->running = false;
+    column_draw_data_init(&app->draw_info, app->rnd_values, NUM_COLUMNS);
     selection_sort_init(&app->selection_sort_state, app->rnd_values, NUM_COLUMNS);
     insert_sort_init(&app->insert_sort_state, app->rnd_values, NUM_COLUMNS);
     merge_sort_init(&app->merge_sort_state, app->rnd_values, NUM_COLUMNS);
@@ -341,7 +136,7 @@ bool init(struct App* app) {
     SDL_RenderClear(app->renderer);
     SDL_RenderPresent(app->renderer);
 
-    app->algorithm_type = MERGE_SORT;
+    app->algorithm_type = SELECTION_SORT;
 
     reset(app);
 
@@ -355,75 +150,105 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    struct ColumnDrawData draw_info;
-    column_draw_data_init(&draw_info, app.rnd_values, NUM_COLUMNS);
+    bool should_step = false;
 
     // --- Main loop ---
     while (true) {
-        switch (app.algorithm_type) {
-        case SELECTION_SORT:
-            if (!app.selection_sort_state.done) {
-                selection_sort_step(&app.selection_sort_state);
-            }
+        if (app.running || should_step) {
+            should_step = false;
+            switch (app.algorithm_type) {
+            case SELECTION_SORT:
+                if (!app.selection_sort_state.done) {
+                    selection_sort_step(&app.selection_sort_state);
+                }
 
-            {
-                Color_t colors[] = {PRIMARY, SECONDARY, TERTIARY};
-                int ind[] = {app.selection_sort_state.iter_idx,
-                             app.selection_sort_state.inner_idx,
-                             app.selection_sort_state.min_idx};
-                draw_info.num_colored_columns = 3;
-                draw_info.colored_columns_indices = ind;
-                draw_info.colors = colors;
+                {
+                    Color_t colors[] = {PRIMARY, SECONDARY, TERTIARY};
+                    int ind[] = {app.selection_sort_state.iter_idx,
+                                 app.selection_sort_state.inner_idx,
+                                 app.selection_sort_state.min_idx};
+                    app.draw_info.num_colored_columns = 3;
+                    app.draw_info.colored_columns_indices = ind;
+                    app.draw_info.colors = colors;
+                    break;
+                }
+            case INSERT_SORT:
+                if (!app.insert_sort_state.done) {
+                    insert_sort_step(&app.insert_sort_state);
+                }
+
+                {
+                    Color_t colors[] = {PRIMARY, SECONDARY};
+                    int ind[] = {app.insert_sort_state.iter_idx + 1,
+                                 app.insert_sort_state.insert_idx};
+                    app.draw_info.num_colored_columns = 2;
+                    app.draw_info.colored_columns_indices = ind;
+                    app.draw_info.colors = colors;
+                    break;
+                }
+            case MERGE_SORT:
+                if (!app.merge_sort_state.done) {
+                    merge_sort_step(&app.merge_sort_state);
+                }
+
+                {
+                    Color_t colors[] = {SECONDARY, SECONDARY, TERTIARY, PRIMARY, PRIMARY};
+                    int left_idx = app.merge_sort_state.merge_left_idx;
+                    int right_idx = app.merge_sort_state.merge_right_idx;
+                    int mid = left_idx + (right_idx - left_idx) / 2;
+                    int a_ind = left_idx + app.merge_sort_state.subarr_left_idx;
+                    int b_ind = mid + app.merge_sort_state.subarr_right_idx + 1;
+                    int i = left_idx + app.merge_sort_state.merge_iter;
+                    int ind[] = {a_ind, b_ind, i, left_idx, right_idx};
+                    app.draw_info.num_colored_columns = 5;
+                    app.draw_info.colored_columns_indices = ind;
+                    app.draw_info.colors = colors;
+                    break;
+                }
+            default:
                 break;
             }
-        case INSERT_SORT:
-            if (!app.insert_sort_state.done) {
-                insert_sort_step(&app.insert_sort_state);
-            }
-
-            {
-                Color_t colors[] = {PRIMARY, SECONDARY};
-                int ind[] = {app.insert_sort_state.iter_idx + 1,
-                             app.insert_sort_state.insert_idx};
-                draw_info.num_colored_columns = 2;
-                draw_info.colored_columns_indices = ind;
-                draw_info.colors = colors;
-                break;
-            }
-        case MERGE_SORT:
-            if (!app.merge_sort_state.done) {
-                merge_sort_step(&app.merge_sort_state);
-            }
-
-            {
-                Color_t colors[] = {SECONDARY, SECONDARY, TERTIARY, PRIMARY, PRIMARY};
-                int left_idx = app.merge_sort_state.merge_left_idx;
-                int right_idx = app.merge_sort_state.merge_right_idx;
-                int mid = left_idx + (right_idx - left_idx) / 2;
-                int a_ind = left_idx + app.merge_sort_state.subarr_left_idx;
-                int b_ind = mid + app.merge_sort_state.subarr_right_idx + 1;
-                int i = left_idx + app.merge_sort_state.merge_iter;
-                int ind[] = {a_ind, b_ind, i, left_idx, right_idx};
-                draw_info.num_colored_columns = 5;
-                draw_info.colored_columns_indices = ind;
-                draw_info.colors = colors;
-                break;
-            }
-        default:
-            break;
         }
 
         SDL_RenderClear(app.renderer);
-        draw_columns(app.renderer, draw_info);
+        draw_columns(app.renderer, app.draw_info);
         SDL_RenderPresent(app.renderer);
 
         if (SDL_PollEvent(&app.event)) {
             if (app.event.type == SDL_QUIT) {
                 break;
             }
+
+            if (app.event.type == SDL_KEYDOWN) {
+                switch (app.event.key.keysym.sym) {
+                case SDLK_r:
+                    reset(&app);
+                    break;
+                case SDLK_1:
+                    app.algorithm_type = SELECTION_SORT;
+                    reset(&app);
+                    break;
+                case SDLK_2:
+                    app.algorithm_type = INSERT_SORT;
+                    reset(&app);
+                    break;
+                case SDLK_3:
+                    app.algorithm_type = MERGE_SORT;
+                    reset(&app);
+                    break;
+                case SDLK_SPACE:
+                    app.running = !app.running;
+                    break;
+                case SDLK_s:
+                    should_step = true;
+                    break;
+                default:
+                    break;
+                }
+            }
         }
 
-        SDL_Delay(10);
+        SDL_Delay(DELAY_MS);
     }
 
     SDL_DestroyRenderer(app.renderer);
